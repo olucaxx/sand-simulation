@@ -9,12 +9,7 @@ WIDTH = 100
 HEIGHT = 50
 SCALE = 10
 FPS = 60
-
-# init 
-pygame.init()
-pygame.display.set_caption("sand simulation")
-screen = pygame.display.set_mode((WIDTH * SCALE, HEIGHT * SCALE))
-clock = pygame.time.Clock()
+TICK_STEP = 1 / 60 # duracao de um tick (update da areia) ~16ms, 60 ticks por seg
 
 # memoria da tela, onde os pixeis ficam armazenados, -1 = vazio e entre 0 e 360 = cor hue
 world = np.full(shape=(HEIGHT, WIDTH), fill_value=-1)
@@ -30,8 +25,18 @@ noise = 0.0
 
 running = True
 pressing = False
+timer = 0.0
+
+# init 
+pygame.init()
+pygame.display.set_caption("sand simulation")
+screen = pygame.display.set_mode((WIDTH * SCALE, HEIGHT * SCALE))
+clock = pygame.time.Clock()
 
 while running:        
+    dt = clock.tick(FPS) / 1000.0 # quanto tempo desde o ultimo loop
+    timer += dt # tempo acumulado
+
     # - EVENTOS
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -60,32 +65,35 @@ while running:
         hue_value = 0
 
     # - MOVIMENTAR AREIA
-    # fazemos um scan geral, de baixo para cima, da direita para a esquerda
-    for y in range(HEIGHT-2, -1, -1):
-        for x in range(0, WIDTH):
-            if world[y, x] < 0: # verifica se o espaco atual esta vazio
-                continue
-            
-            if world[y+1, x] < 0: # desce a areia de cima 
-                world[y+1, x] = world[y, x]
-                world[y, x] = -1
-                continue
-            
-            noise += random.uniform(-0.05, 0.05) 
-            noise = np.clip(noise, -1, 1) 
-
-            if noise < 0: 
-                if x+1 < WIDTH: # evita tentar colocar no espaco WIDTH + 1, gera index error
-                    if world[y+1, x+1] < 0: # joga para a direita a areia
-                        world[y+1, x+1] = world[y, x]
-                        world[y, x] = -1
-                        continue
-            
-            if x-1 >= 0: # nao permite colocar no -1 e evita um loop
-                if world[y+1, x-1] < 0: # joga para a esquerda a areia
-                    world[y+1, x-1] = world[y, x]
+    if timer >= TICK_STEP: # quer dizer que temos que pagar um tick
+        # fazemos um scan geral, de baixo para cima, da direita para a esquerda
+        for y in range(HEIGHT-2, -1, -1):
+            for x in range(0, WIDTH):
+                if world[y, x] < 0: # verifica se o espaco atual esta vazio
+                    continue
+                
+                if world[y+1, x] < 0: # desce a areia de cima 
+                    world[y+1, x] = world[y, x]
                     world[y, x] = -1
                     continue
+                
+                noise += random.uniform(-0.05, 0.05) 
+                noise = np.clip(noise, -1, 1) 
+
+                if noise < 0: 
+                    if x+1 < WIDTH: # evita tentar colocar no espaco WIDTH + 1, gera index error
+                        if world[y+1, x+1] < 0: # joga para a direita a areia
+                            world[y+1, x+1] = world[y, x]
+                            world[y, x] = -1
+                            continue
+                
+                if x-1 >= 0: # nao permite colocar no -1 e evita um loop
+                    if world[y+1, x-1] < 0: # joga para a esquerda a areia
+                        world[y+1, x-1] = world[y, x]
+                        world[y, x] = -1
+                        continue
+
+        timer -= TICK_STEP # desconta nosso gasto de update logico
 
     # - RENDER WORLD
     screen.fill((0,0,0)) # pinta toda a SCREEN nao o world
