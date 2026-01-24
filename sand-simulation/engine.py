@@ -5,14 +5,18 @@ from colorsys import hsv_to_rgb
 import random
 
 # config
-WIDTH = 100
-HEIGHT = 50
-SCALE = 10
+WIDTH = 50
+HEIGHT = 100
+SCALE = 5
 FPS = 60
 TICK_STEP = 1 / 60 # duracao de um tick (update da areia) ~16ms, 60 ticks por seg
 
 # memoria da tela, onde os pixeis ficam armazenados, -1 = vazio e entre 0 e 360 = cor hue
 world = np.full(shape=(HEIGHT, WIDTH), fill_value=-1)
+
+# cria um set para cada y, vamos armazenar os x dentro desses sets
+active_xs_per_y = [set() for _ in range(HEIGHT-1)] 
+# utilizado para melhorar a renderizacao
 
 # lookup table para armazenar os valores rgb do hue
 LUT = np.zeros((361,3), dtype=np.uint8)
@@ -27,6 +31,12 @@ running = True
 pressing = False
 timer = 0.0
 
+def update_active_sand(new_y, new_x, y, x):
+    active_xs_per_y[y].discard(x)
+
+    if new_y < HEIGHT-1:
+        active_xs_per_y[new_y].add(new_x)
+
 # init 
 pygame.init()
 pygame.display.set_caption("sand simulation")
@@ -34,6 +44,7 @@ screen = pygame.display.set_mode((WIDTH * SCALE, HEIGHT * SCALE))
 clock = pygame.time.Clock()
 
 while running:        
+    print(list(active_xs_per_y))
     dt = clock.tick(FPS) / 1000.0 # quanto tempo desde o ultimo loop
     timer += dt # tempo acumulado
 
@@ -59,6 +70,8 @@ while running:
         if 0 <= world_x < WIDTH and 0 <= world_y < HEIGHT: # dentro da tela
              if world[world_y, world_x] < 0:               # espaco esta vazio
                 world[world_y, world_x] = hue_value
+                if world_y < HEIGHT-1 and world_x < WIDTH-1:
+                    active_xs_per_y[world_y].add(world_x)
                 hue_value+=1
 
     if hue_value > 360: # garante o loop da roda de cores
@@ -68,30 +81,42 @@ while running:
     if timer >= TICK_STEP: # quer dizer que temos que pagar um tick
         # fazemos um scan geral, de baixo para cima, da direita para a esquerda
         for y in range(HEIGHT-2, -1, -1):
-            for x in range(0, WIDTH):
-                if world[y, x] < 0: # verifica se o espaco atual esta vazio
-                    continue
-                
-                if world[y+1, x] < 0: # desce a areia de cima 
-                    world[y+1, x] = world[y, x]
-                    world[y, x] = -1
-                    continue
-                
+            for x in list(active_xs_per_y[y]): # necessario criar copia do set, ele sera atualizado durante a iteracao
+                can_down = (y+1 < HEIGHT and world[y+1, x] < 0)
+                can_right = (y+1 < HEIGHT and x+1 < WIDTH and world[y+1, x+1] < 0)
+                can_left = (y+1 < HEIGHT and x-1 >= 0 and world[y+1, x-1] < 0)
+
                 noise += random.uniform(-0.05, 0.05) 
                 noise = np.clip(noise, -1, 1) 
 
-                if noise < 0: 
-                    if x+1 < WIDTH: # evita tentar colocar no espaco WIDTH + 1, gera index error
-                        if world[y+1, x+1] < 0: # joga para a direita a areia
-                            world[y+1, x+1] = world[y, x]
-                            world[y, x] = -1
-                            continue
-                
-                if x-1 >= 0: # nao permite colocar no -1 e evita um loop
-                    if world[y+1, x-1] < 0: # joga para a esquerda a areia
-                        world[y+1, x-1] = world[y, x]
+                if can_down:
+                    world[y+1, x] = world[y, x]
+                    world[y, x] = -1
+                    update_active_sand(y+1, x, y, x)
+                    continue
+            
+                if noise < 0:
+                    if can_right: 
+                        world[y+1, x+1] = world[y, x]
                         world[y, x] = -1
+                        update_active_sand(y+1, x+1, y, x)
                         continue
+
+                if can_left:
+                    world[y+1, x-1] = world[y, x]
+                    world[y, x] = -1
+                    update_active_sand(y+1, x-1, y, x)
+                    continue
+
+                if can_right: 
+                    world[y+1, x+1] = world[y, x]
+                    world[y, x] = -1
+                    update_active_sand(y+1, x+1, y, x)
+                    continue
+
+                if not(can_down or can_right or can_left):
+                    active_xs_per_y[y].discard(x)
+
 
         timer -= TICK_STEP # desconta nosso gasto de update logico
 
