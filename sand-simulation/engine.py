@@ -25,7 +25,6 @@ for hue in range(361):
     LUT[hue] = (r*255, g*255, b*255)
 
 hue_value = 0 # armazenar qual "posicao" do hue estamos
-noise = 0.0
 
 running = True
 pressing = False
@@ -44,7 +43,6 @@ screen = pygame.display.set_mode((WIDTH * SCALE, HEIGHT * SCALE))
 clock = pygame.time.Clock()
 
 while running:        
-    print(list(active_xs_per_y))
     dt = clock.tick(FPS) / 1000.0 # quanto tempo desde o ultimo loop
     timer += dt # tempo acumulado
 
@@ -70,7 +68,7 @@ while running:
         if 0 <= world_x < WIDTH and 0 <= world_y < HEIGHT: # dentro da tela
              if world[world_y, world_x] < 0:               # espaco esta vazio
                 world[world_y, world_x] = hue_value
-                if world_y < HEIGHT-1 and world_x < WIDTH-1:
+                if world_y < HEIGHT-1 and world_x < WIDTH:
                     active_xs_per_y[world_y].add(world_x)
                 hue_value+=1
 
@@ -79,43 +77,50 @@ while running:
 
     # - MOVIMENTAR AREIA
     if timer >= TICK_STEP: # quer dizer que temos que pagar um tick
+        print(active_xs_per_y)
         # fazemos um scan geral, de baixo para cima, da direita para a esquerda
         for y in range(HEIGHT-2, -1, -1):
             for x in list(active_xs_per_y[y]): # necessario criar copia do set, ele sera atualizado durante a iteracao
-                can_down = (y+1 < HEIGHT and world[y+1, x] < 0)
-                can_right = (y+1 < HEIGHT and x+1 < WIDTH and world[y+1, x+1] < 0)
-                can_left = (y+1 < HEIGHT and x-1 >= 0 and world[y+1, x-1] < 0)
+                if y+1 < HEIGHT:
+                    can_down = world[y+1, x] < 0
+                    can_left = ((x-1 >= 0) and (world[y+1, x-1] < 0))
+                    can_right = ((x+1 < WIDTH) and (world[y+1, x+1] < 0))
 
-                noise += random.uniform(-0.05, 0.05) 
-                noise = np.clip(noise, -1, 1) 
+                    if can_down:
+                        world[y+1, x] = world[y, x]
+                        world[y, x] = -1
+                        update_active_sand(y+1, x, y, x)
+                        continue
+                
+                    if random.random() < 0.7:
+                        if can_right: 
+                            world[y+1, x+1] = world[y, x]
+                            world[y, x] = -1
+                            update_active_sand(y+1, x+1, y, x)
+                            continue
 
-                if can_down:
-                    world[y+1, x] = world[y, x]
-                    world[y, x] = -1
-                    update_active_sand(y+1, x, y, x)
-                    continue
-            
-                if noise < 0:
+                    if can_left:
+                        world[y+1, x-1] = world[y, x]
+                        world[y, x] = -1
+                        update_active_sand(y+1, x-1, y, x)
+                        continue
+
                     if can_right: 
                         world[y+1, x+1] = world[y, x]
                         world[y, x] = -1
                         update_active_sand(y+1, x+1, y, x)
                         continue
 
-                if can_left:
-                    world[y+1, x-1] = world[y, x]
-                    world[y, x] = -1
-                    update_active_sand(y+1, x-1, y, x)
+                    if (
+                        world[y+1, x] >= 0 and
+                        (x-1 < 0 or world[y+1, x-1] >= 0) and
+                        (x+1 >= WIDTH or world[y+1, x+1] >= 0)
+                    ):
+                        active_xs_per_y[y].discard(x)
+
                     continue
 
-                if can_right: 
-                    world[y+1, x+1] = world[y, x]
-                    world[y, x] = -1
-                    update_active_sand(y+1, x+1, y, x)
-                    continue
-
-                if not(can_down or can_right or can_left):
-                    active_xs_per_y[y].discard(x)
+                active_xs_per_y[y].discard(x)
 
 
         timer -= TICK_STEP # desconta nosso gasto de update logico
