@@ -135,9 +135,7 @@ while running:
                         break
                 
                 if new_y == y and new_x == x:
-                    vel[y, x] *= 0.5
-                    if vel[y, x] < 0.1:
-                        active_xs_per_y[y].discard(x)
+                    active_xs_per_y[y].discard(x)
                     continue
 
                 world[y, x] = -1
@@ -160,7 +158,7 @@ while running:
                     for nx in (x-1, x, x+1):
                         if 0 <= nx < WIDTH and world[y-1, nx] >= 0:
                             active_xs_per_y[y-1].add(nx)
-        
+
         timer -= TICK_STEP
 
     # - RENDER WORLD
