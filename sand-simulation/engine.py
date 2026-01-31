@@ -5,9 +5,9 @@ from colorsys import hsv_to_rgb
 import random
 
 # config
-WIDTH = 50
-HEIGHT = 100
-SCALE = 8
+WIDTH = 150
+HEIGHT = 200
+SCALE = 3
 FPS = 60
 TICK_STEP = 1 / 60 # duracao de um tick (update da areia) ~16ms, 60 ticks por seg
 
@@ -63,19 +63,26 @@ while running:
     cursor_y = mouse_y // SCALE
 
     # - COLOCAR AREIA
-    if pressing:               
-        if 0 <= cursor_x < WIDTH and 0 <= cursor_y < HEIGHT: 
-            if world[cursor_y, cursor_x] < 0: 
-                vel[cursor_y, cursor_x] = 1
-                world[cursor_y, cursor_x] = hue_value
+    if pressing:
+        if 0 <= cursor_x < WIDTH and 0 <= cursor_y < HEIGHT:
+            for py in (-1, 0, 1):
+                for px in (-1, 0, 1):
+                    cx = cursor_x + px
+                    cy = cursor_y + py
 
-                if cursor_y < HEIGHT-1:
-                    active_xs_per_y[cursor_y].add(cursor_x)    
+                    if 0 <= cx < WIDTH and 0 <= cy < HEIGHT:
+                        if world[cy, cx] < 0:
+                            vel[cy, cx] = 1
+                            world[cy, cx] = hue_value
 
-                if hue_value >= 360: # garante o loop da roda de cores
-                    hue_value = 0       
-                    
-                hue_value+=1
+                            if cy < HEIGHT - 1:
+                                active_xs_per_y[cy].add(cx)
+
+            if hue_value >= 360: # garante o loop da roda de cores hue_value = 0
+                hue_value = 0
+
+            hue_value +=1
+            
 
     # - MOVIMENTAR AREIA
     if timer >= TICK_STEP:
@@ -158,6 +165,8 @@ while running:
                     for nx in (x-1, x, x+1):
                         if 0 <= nx < WIDTH and world[y-1, nx] >= 0:
                             active_xs_per_y[y-1].add(nx)
+
+        print(f"total areia: {np.count_nonzero(world >= 0)} | "f"areia ativa: {sum(len(s) for s in active_xs_per_y)}")
 
         timer -= TICK_STEP
 
