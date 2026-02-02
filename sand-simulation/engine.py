@@ -19,9 +19,15 @@ world = np.full(shape=(HEIGHT, WIDTH), fill_value=-1)
 # velocidade queda de cada areia
 vel = np.full(shape=(HEIGHT, WIDTH), fill_value=0.0)
 
+# criacao de um surface para renderizacao da areia
+world_surface = pygame.Surface((WIDTH, HEIGHT))
+
 # cria um set para cada y, vamos armazenar os x dentro desses sets
 active_xs_per_y = [set() for _ in range(HEIGHT-1)] 
 # utilizado para melhorar a logica de queda da areia
+
+# armazenamento das posicoes que sofreram atualizacao, tanto entrada quanto saida de areia
+volatile_pixels = set()
 
 # lookup table para armazenar os valores rgb do hue
 LUT = np.zeros((361,3), dtype=np.uint8)
@@ -166,16 +172,38 @@ while running:
                         if 0 <= nx < WIDTH and world[y-1, nx] >= 0:
                             active_xs_per_y[y-1].add(nx)
 
+                volatile_pixels.add((x, y))
+                volatile_pixels.add((new_x, new_y))
+
         print(f"total areia: {np.count_nonzero(world >= 0)} | "f"areia ativa: {sum(len(s) for s in active_xs_per_y)}")
 
         timer -= TICK_STEP
 
     # - RENDER WORLD
+
+    # atraves do surfarray vamos acessar o que esta armazenado
+    surface_pixels = pygame.surfarray.pixels3d(world_surface)
+
+    for x, y in volatile_pixels:
+        if world[y, x] < 0 and x not in active_xs_per_y[y]:
+            surface_pixels[x, y] = (0,0,0)
+        if world[y, x] >= 0:
+            surface_pixels[x, y] = LUT[world[y, x]]
+
+    # precisamos liberar essa variavel para nao ocorrer problemas
+    del surface_pixels
+    # limpamos a lista, pois esses pixeis ja se "moveram"
+    volatile_pixels.clear()
+
+    # necessario para escalar a imagem para o tamanho da tela
+    scaled_surface = pygame.transform.scale_by(world_surface, SCALE)
+    
+    '''
     screen.fill((0,0,0)) # pinta toda a SCREEN nao o world
 
     pixel_y, pixel_x = np.where(world >= 0)
     pixels = list(zip(pixel_y, pixel_x))
-
+    
     for y, x in pixels:
         pygame.draw.rect(
                     screen, 
@@ -190,7 +218,8 @@ while running:
             LUT[hue_value],
             (cursor_x * SCALE, cursor_y * SCALE, SCALE, SCALE)
         )
-
+    '''
+    screen.blit(scaled_surface, (0,0))
     pygame.display.flip()
     clock.tick(FPS)
 
