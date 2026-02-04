@@ -81,6 +81,9 @@ while running:
                             vel[cy, cx] = 1
                             world[cy, cx] = hue_value
 
+                            volatile_pixels.add((cx, cy)) 
+                            # necessario garantir que o pixel colocado seja exibido no chao tambem
+
                             if cy < HEIGHT - 1:
                                 active_xs_per_y[cy].add(cx)
 
@@ -96,6 +99,8 @@ while running:
             xs_to_process = list(active_xs_per_y[y])
             
             for x in xs_to_process:
+                volatile_pixels.add((x, y)) # garante a atualizacao na tela daquele pixel, mesmo que nao se mova
+
                 if world[y, x] < 0:
                     active_xs_per_y[y].discard(x)
                     continue
@@ -141,7 +146,6 @@ while running:
                             new_x = next_x
                             steps_taken += 1
                             moved = True
-                            original_vel = max(int(original_vel * 0.7), 1)
                             break
                     
                     if not moved:
@@ -171,8 +175,7 @@ while running:
                     for nx in (x-1, x, x+1):
                         if 0 <= nx < WIDTH and world[y-1, nx] >= 0:
                             active_xs_per_y[y-1].add(nx)
-
-                volatile_pixels.add((x, y))
+                
                 volatile_pixels.add((new_x, new_y))
 
         print(f"total areia: {np.count_nonzero(world >= 0)} | "f"areia ativa: {sum(len(s) for s in active_xs_per_y)}")
@@ -183,9 +186,8 @@ while running:
 
     # atraves do surfarray vamos acessar o que esta armazenado
     surface_pixels = pygame.surfarray.pixels3d(world_surface)
-
     for x, y in volatile_pixels:
-        if world[y, x] < 0 and x not in active_xs_per_y[y]:
+        if world[y, x] < 0:
             surface_pixels[x, y] = (0,0,0)
         if world[y, x] >= 0:
             surface_pixels[x, y] = LUT[world[y, x]]
@@ -198,27 +200,6 @@ while running:
     # necessario para escalar a imagem para o tamanho da tela
     scaled_surface = pygame.transform.scale_by(world_surface, SCALE)
     
-    '''
-    screen.fill((0,0,0)) # pinta toda a SCREEN nao o world
-
-    pixel_y, pixel_x = np.where(world >= 0)
-    pixels = list(zip(pixel_y, pixel_x))
-    
-    for y, x in pixels:
-        pygame.draw.rect(
-                    screen, 
-                    LUT[world[y, x]], 
-                    (x * SCALE, y * SCALE, SCALE, SCALE)
-                )
-
-    # - RENDER POSICAO DO MOUSE
-    if 0 <= cursor_x < WIDTH and 0 <= cursor_y < HEIGHT:
-        pygame.draw.rect(
-            screen,
-            LUT[hue_value],
-            (cursor_x * SCALE, cursor_y * SCALE, SCALE, SCALE)
-        )
-    '''
     screen.blit(scaled_surface, (0,0))
     pygame.display.flip()
     clock.tick(FPS)
