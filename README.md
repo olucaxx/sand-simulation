@@ -4,6 +4,8 @@
 ![pygame](https://img.shields.io/badge/pygame-2.x-green)
 ![repo size](https://img.shields.io/github/repo-size/olucaxx/falling-sand)
 
+![demo](./assets/falling-sand-demo.gif)
+
 ## sobre o projeto
 
 simulador de areia inspirado no *Coding Challenge #180 – Falling Sand* do The Coding Train, desenvolvido com o objetivo de praticar lógica de simulação, renderização eficiente, manipulação de arrays e a própria biblioteca do pygame.
