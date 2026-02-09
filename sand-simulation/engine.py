@@ -40,12 +40,15 @@ hue_value = 0
 running = True
 pressing = False
 timer = 0.0
+total_sand = 0
+active_sand = 0
 
 # init 
 pygame.init()
 pygame.display.set_caption("sand simulation")
 screen = pygame.display.set_mode((WIDTH * SCALE, HEIGHT * SCALE))
 clock = pygame.time.Clock()
+font = pygame.font.Font(None, 24)
 
 while running:        
     dt = clock.tick(FPS) / 1000.0 # quanto tempo desde o ultimo loop
@@ -178,7 +181,8 @@ while running:
                 
                 volatile_pixels.add((new_x, new_y))
 
-        print(f"total areia: {np.count_nonzero(world >= 0)} | "f"areia ativa: {sum(len(s) for s in active_xs_per_y)}")
+        total_sand = np.count_nonzero(world >= 0)
+        active_sand = sum(len(s) for s in active_xs_per_y)
 
         timer -= TICK_STEP
 
@@ -201,6 +205,12 @@ while running:
     scaled_surface = pygame.transform.scale_by(world_surface, SCALE)
     
     screen.blit(scaled_surface, (0,0))
+
+    total_text = font.render(f"areia total: {total_sand}", True, (255, 255, 255))
+    active_text = font.render(f"areia ativa: {active_sand}", True, (255, 255, 255))
+    screen.blit(total_text, (10, 10))
+    screen.blit(active_text, (10, 10 + total_text.get_height() + 5))
+
     pygame.display.flip()
     clock.tick(FPS)
 
